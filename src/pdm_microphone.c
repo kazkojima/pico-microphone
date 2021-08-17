@@ -18,7 +18,7 @@
 
 #include "pico/pdm_microphone.h"
 
-#define PDM_DECIMATION       64
+#define PDM_DECIMATION       32
 #define PDM_RAW_BUFFER_COUNT 2
 
 static struct {
@@ -70,10 +70,32 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
         config->pio,
         config->pio_sm,
         pio_sm_offset,
+        clk_div*2,
+        config->gpio_data,
+        config->gpio_clk
+    );
+
+#if 1
+    pio_sm_set_enabled(
+        pdm_mic.config.pio,
+        pdm_mic.config.pio_sm,
+        true
+    );
+    sleep_ms(5000);
+    pio_sm_set_enabled(
+        pdm_mic.config.pio,
+        pdm_mic.config.pio_sm,
+        false
+    );
+    pdm_microphone_data_init(
+        config->pio,
+        config->pio_sm,
+        pio_sm_offset,
         clk_div,
         config->gpio_data,
         config->gpio_clk
     );
+#endif
 
     dma_channel_config dma_channel_cfg = dma_channel_get_default_config(pdm_mic.dma_channel);
 
@@ -239,6 +261,8 @@ int pdm_microphone_read(int16_t* buffer, size_t samples) {
         Open_PDM_Filter_64(in, out, pdm_mic.filter_volume, &pdm_mic.filter);
 #elif PDM_DECIMATION == 128
         Open_PDM_Filter_128(in, out, pdm_mic.filter_volume, &pdm_mic.filter);
+#elif PDM_DECIMATION == 32
+        Open_PDM_Filter_32(in, out, pdm_mic.filter_volume, &pdm_mic.filter);
 #else
         #error "Unsupported PDM_DECIMATION value!"
 #endif
