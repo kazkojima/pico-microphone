@@ -48,6 +48,22 @@ int32_t lut[256][DECIMATION_MAX / 8][SINCN];
 /* Functions -----------------------------------------------------------------*/
  
 #ifdef USE_LUT
+int32_t filter_table_mono_32(uint8_t *data, uint8_t sincn)
+{
+  return (int32_t)
+    lut[data[0]][0][sincn] +
+    lut[data[1]][1][sincn] +
+    lut[data[2]][2][sincn] +
+    lut[data[3]][3][sincn];
+}
+int32_t filter_table_stereo_32(uint8_t *data, uint8_t sincn)
+{
+  return (int32_t)
+    lut[data[0]][0][sincn] +
+    lut[data[2]][1][sincn] +
+    lut[data[4]][2][sincn] +
+    lut[data[6]][3][sincn];
+}
 int32_t filter_table_mono_64(uint8_t *data, uint8_t sincn)
 {
   return (int32_t)
@@ -112,6 +128,7 @@ int32_t filter_table_stereo_128(uint8_t *data, uint8_t sincn)
     lut[data[28]][14][sincn] +
     lut[data[30]][15][sincn];
 }
+int32_t (* filter_tables_32[2]) (uint8_t *data, uint8_t sincn) = {filter_table_mono_32, filter_table_stereo_32};
 int32_t (* filter_tables_64[2]) (uint8_t *data, uint8_t sincn) = {filter_table_mono_64, filter_table_stereo_64};
 int32_t (* filter_tables_128[2]) (uint8_t *data, uint8_t sincn) = {filter_table_mono_128, filter_table_stereo_128};
 #else
@@ -214,6 +231,54 @@ void Open_PDM_Filter_Init(TPDMFilter_InitStruct *Param)
                        ((c     ) & 0x01) * coef_p[d * 8 + 7];
   }
 #endif
+}
+ 
+void Open_PDM_Filter_32(uint8_t* data, uint16_t* dataOut, uint16_t volume, TPDMFilter_InitStruct *Param)
+{
+  uint8_t i, data_out_index;
+  uint8_t channels = Param->In_MicChannels;
+  uint8_t data_inc = ((DECIMATION_MAX >> 5) * channels);
+  int64_t Z, Z0, Z1, Z2;
+  int64_t OldOut, OldIn, OldZ;
+ 
+  OldOut = Param->OldOut;
+  OldIn = Param->OldIn;
+  OldZ = Param->OldZ;
+ 
+#ifdef USE_LUT
+  uint8_t j = channels - 1;
+#endif
+ 
+  for (i = 0, data_out_index = 0; i < Param->Fs / 1000; i++, data_out_index += channels) {
+#ifdef USE_LUT
+    Z0 = filter_tables_32[j](data, 0);
+    Z1 = filter_tables_32[j](data, 1);
+    Z2 = filter_tables_32[j](data, 2);
+#else
+    Z0 = filter_table(data, 0, Param);
+    Z1 = filter_table(data, 1, Param);
+    Z2 = filter_table(data, 2, Param);
+#endif
+ 
+    Z = Param->Coef[1] + Z2 - sub_const;
+    Param->Coef[1] = Param->Coef[0] + Z1;
+    Param->Coef[0] = Z0;
+ 
+    OldOut = (Param->HP_ALFA * (OldOut + Z - OldIn)) >> 8;
+    OldIn = Z;
+    OldZ = ((256 - Param->LP_ALFA) * OldZ + Param->LP_ALFA * OldOut) >> 8;
+ 
+    Z = OldZ * volume;
+    Z = RoundDiv(Z, div_const);
+    Z = SaturaLH(Z, -32700, 32700);
+ 
+    dataOut[data_out_index] = Z;
+    data += data_inc;
+  }
+ 
+  Param->OldOut = OldOut;
+  Param->OldIn = OldIn;
+  Param->OldZ = OldZ;
 }
  
 void Open_PDM_Filter_64(uint8_t* data, uint16_t* dataOut, uint16_t volume, TPDMFilter_InitStruct *Param)
