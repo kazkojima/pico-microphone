@@ -41,6 +41,18 @@ target_include_directories(pico_analog_microphone INTERFACE
 
 target_link_libraries(pico_analog_microphone INTERFACE pico_stdlib hardware_adc hardware_dma)
 
+set(USMIC OFF CACHE BOOL "Build for ultrasonic microphone e.g. SPH0641LU4H")
+if(USMIC)
+  set(DECIM 32)
+  set(SAMPR 144)
+  target_compile_definitions(pico_pdm_microphone INTERFACE MIC_SPH0641LU4H=1)
+else()
+  set(DECIM 64)
+  set(SAMPR 16)
+endif()
+target_compile_definitions(pico_pdm_microphone INTERFACE PDM_DECIMATION=${DECIM})
+target_compile_definitions(pico_pdm_microphone INTERFACE PDM_SAMPLE_RATE=${SAMPR})
+
 add_subdirectory("examples/hello_analog_microphone")
 add_subdirectory("examples/hello_pdm_microphone")
 add_subdirectory("examples/usb_microphone")

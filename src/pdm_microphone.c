@@ -18,7 +18,9 @@
 
 #include "pico/pdm_microphone.h"
 
-#define PDM_DECIMATION       32
+#ifndef PDM_DECIMATION
+#error "undef PDM_DECIMATION"
+#endif
 #define PDM_RAW_BUFFER_COUNT 2
 
 static struct {
@@ -75,7 +77,9 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
         config->gpio_clk
     );
 
-#if 1
+#ifdef MIC_SPH0641LU4H
+    /* Set SPH0641LU4H to the normal mode with clock < 815kHz first and
+       then update it to the ultrasonic mode with clock > 3.072MHz.  */
     pio_sm_set_enabled(
         pdm_mic.config.pio,
         pdm_mic.config.pio_sm,
