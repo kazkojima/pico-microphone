@@ -68,6 +68,9 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
 
     float clk_div = clock_get_hz(clk_sys) / (config->sample_rate * PDM_DECIMATION * 4.0);
 
+#ifdef MIC_SPH0641LU4H
+    /* Set SPH0641LU4H to the normal mode with clock < 815kHz first and
+       then update it to the ultrasonic mode with clock > 3.072MHz.  */
     pdm_microphone_data_init(
         config->pio,
         config->pio_sm,
@@ -76,10 +79,6 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
         config->gpio_data,
         config->gpio_clk
     );
-
-#ifdef MIC_SPH0641LU4H
-    /* Set SPH0641LU4H to the normal mode with clock < 815kHz first and
-       then update it to the ultrasonic mode with clock > 3.072MHz.  */
     pio_sm_set_enabled(
         pdm_mic.config.pio,
         pdm_mic.config.pio_sm,
@@ -91,6 +90,7 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
         pdm_mic.config.pio_sm,
         false
     );
+#endif
     pdm_microphone_data_init(
         config->pio,
         config->pio_sm,
@@ -99,7 +99,6 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
         config->gpio_data,
         config->gpio_clk
     );
-#endif
 
     dma_channel_config dma_channel_cfg = dma_channel_get_default_config(pdm_mic.dma_channel);
 
