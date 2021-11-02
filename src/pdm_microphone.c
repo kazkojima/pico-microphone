@@ -66,7 +66,7 @@ int pdm_microphone_init(const struct pdm_microphone_config* config) {
 
     uint pio_sm_offset = pio_add_program(config->pio, &pdm_microphone_data_program);
 
-    float clk_div = clock_get_hz(clk_sys) / (config->sample_rate * PDM_DECIMATION * 4.0);
+    float clk_div = clock_get_hz(clk_sys) / (config->sample_rate * PDM_DECIMATION * 4.0 / NUM_DATA_PINS);
 
 #ifdef MIC_SPH0641LU4H
     /* Set SPH0641LU4H to the normal mode with clock < 815kHz first and
